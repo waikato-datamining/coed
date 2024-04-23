@@ -1,6 +1,8 @@
-from typing import Any, Tuple, List
+from typing import Tuple, List, Type
+
+from coed.class_utils import class_name_to_type
 from coed.config import AbstractOptionHandler
-from coed.class_utils import find_classes, get_class_name
+from coed.registry import Registry
 
 
 class AbstractHelpGenerator(AbstractOptionHandler):
@@ -46,11 +48,13 @@ class AbstractHelpGenerator(AbstractOptionHandler):
                 hf.write(help)
 
 
-def class_hierarchy_help(super_class: Any, generator: AbstractHelpGenerator, output_dir: str, module_regexp: str = None) -> Tuple[List[str], List[str]]:
+def class_hierarchy_help(registry: Registry, super_class: Type, generator: AbstractHelpGenerator, output_dir: str, module_regexp: str = None) -> Tuple[List[str], List[str]]:
     """
     Generates help files for all the classes of the specified class hierarchy
     and places them in the output directory.
 
+    :param registry: the registry to use
+    :type registry: Registry
     :param super_class: the super class of the hierarchy to generate the help files for
     :type super_class: type
     :param generator: the help generator to use
@@ -64,14 +68,12 @@ def class_hierarchy_help(super_class: Any, generator: AbstractHelpGenerator, out
     """
     classes = []
     file_names = []
-    _classes = find_classes(super_class, use_cache=False, module_regexp=module_regexp)
-    for cls in _classes:
-        file_name = get_class_name(cls) + generator.file_extension()
+    _classes = registry.classes(super_class)
+    for c in _classes:
+        cls = class_name_to_type(c)
+        file_name = c + generator.file_extension()
         out_file = output_dir + "/" + file_name
         try:
-            # skip abstract classes (just a naming convention)
-            if cls.__name__.startswith("Abstract"):
-                continue
             generator.generate(cls(), fname=out_file)
             classes.append(cls)
             file_names.append(file_name)
