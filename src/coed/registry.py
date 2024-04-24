@@ -1,17 +1,16 @@
-import abc
 import importlib
 import inspect
 import os
 import sys
 import traceback
-from typing import List, Union, Optional, Type
+from typing import List, Union, Optional, Callable, Type
 
 from pkg_resources import working_set
 
 from .class_utils import get_class_name, class_name_to_type
 
 
-def get_class_lister(class_lister: str) -> Type:
+def get_class_lister(class_lister: str) -> Callable:
     """
     Parses the class_lister definition (module_name:function_name) and returns the function.
 
@@ -29,7 +28,11 @@ def get_class_lister(class_lister: str) -> Type:
         raise Exception("Failed to import class lister module: %s" % module_name)
 
     if hasattr(module, func_name):
-        return getattr(module, func_name)
+        func = getattr(module, func_name)
+        if inspect.isfunction(func):
+            return func
+        else:
+            raise Exception("Class lister function is not an actual function: %s" % class_lister)
     else:
         raise Exception("Class lister function '%s' not found in module '%s'!" % (func_name, module_name))
 
@@ -213,26 +216,23 @@ class Registry:
                 return result
 
             for class_lister in class_listers:
+                try:
+                    func = get_class_lister(class_lister)
+                except:
+                    print("Problem encountered with class lister: %s" % class_lister, file=sys.stderr)
+                    traceback.print_exc()
+                    continue
+
                 if self.excluded_class_listers is not None:
                     if class_lister in self.excluded_class_listers:
                         continue
 
-                module_name, func_name = class_lister.split(":")
-                try:
-                    module = importlib.import_module(module_name)
-                except:
-                    print("Failed to import class lister module: %s" % module_name, file=sys.stderr)
-                    traceback.print_exc()
-                    continue
-
-                if hasattr(module, func_name):
-                    func = getattr(module, func_name)
-                    if inspect.isfunction(func):
-                        class_dict = func()
-                        if c in class_dict:
-                            for sub_module in class_dict[c]:
-                                sub_classes = self._determine_sub_classes(cls, sub_module)
-                                result.extend(sub_classes)
+                if inspect.isfunction(func):
+                    class_dict = func()
+                    if c in class_dict:
+                        for sub_module in class_dict[c]:
+                            sub_classes = self._determine_sub_classes(cls, sub_module)
+                            result.extend(sub_classes)
 
         return result
 
