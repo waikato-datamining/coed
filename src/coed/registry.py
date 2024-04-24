@@ -11,6 +11,29 @@ from pkg_resources import working_set
 from .class_utils import get_class_name, class_name_to_type
 
 
+def get_class_lister(class_lister: str) -> Type:
+    """
+    Parses the class_lister definition (module_name:function_name) and returns the function.
+
+    :param class_lister: the class lister definition to parse
+    :type class_lister: str
+    :return: the parsed function
+    """
+    if ":" not in class_lister:
+        raise Exception("Expected class lister format 'module_name:function_name', received: %s" % class_lister)
+
+    module_name, func_name = class_lister.split(":")
+    try:
+        module = importlib.import_module(module_name)
+    except:
+        raise Exception("Failed to import class lister module: %s" % module_name)
+
+    if hasattr(module, func_name):
+        return getattr(module, func_name)
+    else:
+        raise Exception("Class lister function '%s' not found in module '%s'!" % (func_name, module_name))
+
+
 class Registry:
     """
     Registry for managing class hierarchies.
@@ -151,6 +174,8 @@ class Registry:
 
         for att_name in dir(module):
             if att_name.startswith("_"):
+                continue
+            if att_name.startswith("Abstract"):
                 continue
             att = getattr(module, att_name)
             if inspect.isclass(att) and not inspect.isabstract(att) and not isinstance(att, abc.ABCMeta) and issubclass(att, cls):

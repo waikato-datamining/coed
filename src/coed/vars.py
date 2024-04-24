@@ -208,7 +208,7 @@ class VariableChangeListener(object):
         :param event: the event
         :type event: VariableChangeEvent
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class Variables(object):
@@ -401,7 +401,7 @@ class VariableHandler(object):
         :return: the variables
         :rtype: Variables
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def update_variables(self, variables: Variables):
         """
@@ -410,7 +410,7 @@ class VariableHandler(object):
         :param variables: the variables to use
         :type variables: Variables
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 # serialization

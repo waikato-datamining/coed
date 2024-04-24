@@ -28,7 +28,7 @@ class AbstractStringReader(object):
         :type cls: type
         :return: True if it can handle it
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def convert(self, s: str, base_type: Type = None):
         """
@@ -39,7 +39,7 @@ class AbstractStringReader(object):
         :param base_type: optional type when reconstructing lists etc
         :return: the generated object
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class StringReader(AbstractStringReader):
@@ -200,7 +200,7 @@ class AbstractStringWriter(object):
         :type cls: type
         :return: True if it can handle it
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def convert(self, o: Any) -> str:
         """
@@ -210,7 +210,7 @@ class AbstractStringWriter(object):
         :return: the generated string
         :rtype: str
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class StringWriter(AbstractStringWriter):
