@@ -1,84 +1,122 @@
-# shallowflow-api
-The API for shallowflow.
+# coed
+Configurable Object Entry-point Discovery.
 
 ## Installation
 
 Install via pip:
 
 ```bash
-pip install "git+https://github.com/waikato-datamining/shallowflow-api.git"
+pip install "git+https://github.com/waikato-datamining/coed.git"
 ```
 
-## Classes
+## Usage
 
-* Base classes
+Approach:
 
-  * `shallowflow.api.actor.Actor`
-  * `shallowflow.api.actor.InputConsumer`
-  * `shallowflow.api.actor.OutputProducer`
+1. define a class lister function
+2. reference this function in `setup.py`
+3. create a custom registry
+4. query classes
 
-* Boolean conditions
+For the examples below, we assume that the project is called `project42`.
 
-  * `shallowflow.api.condition.AbstractBooleanCondition`
+### Class lister function
 
-* Configuration
+The class lister function simply returns a dictionary of super classes 
+associated with lists of packages that classes derived from these super 
+classes may occur in. 
 
-  * `shallowflow.api.config.Option` - defines a single parameter
-  * `shallowflow.api.config.OptionManager` - manages all parameters and conversion to/from dictionaries used in serialization
-  * `shallowflow.api.config.AbstractOptionHandler` - ancestor for all classes that handler options
+For example, the following function is located in module `project42.class_lister`:
 
-* Logging
+```python
+from typing import List, Dict
 
-  * `shallowflow.api.logging.LoggableObject`
+def list_classes() -> Dict[str, List[str]]:
+    return {
+        "project42.superclass.One": [
+            "project42.one",
+            "project42.two",
+        ],
+        "project42.superclass.Two": [
+            "project42.deep.deeper.deepest.another",
+        ],
+        "project42.superclass.Three": [
+            "project42.one",
+            "project42.three",
+            "project42.deep.four",
+            "project42.five",
+        ],
+    }
+```
 
-* Help
+### Entry point in setup.py
 
-  * `shallowflow.api.help.AbstractHelpGenerator` - ancestor
+The format for referencing the class lister function is as follows:
 
-* Control actors
+```
+    ...
+    entry_points={
+        "class_lister": [
+            "unique_name=module_name:function_name",
+        ],
+    },
+    ...
+```
 
-  * `shallowflow.api.control.ActorHandler` - manages multiple actors
-  * `shallowflow.api.control.MutableActorHandler` - manages multiple actors, can be appended/removed
-    
-* Directors
+The above example class lister function would be referenced like this:
 
-  * `shallowflow.api.director.AbstractDirector` - used by `ActorHandler`
+```
+    ...
+    entry_points={
+        "class_lister": [
+            "project42=project42.class_lister:list_classes",
+        ],
+    },
+    ...
+```
 
-* Sources
+### Custom registry
 
-  * `shallowflow.api.source.AbstractSimpleSource`
-  * `shallowflow.api.source.AbstractListOutputSource` - can output items as list and one-by-one
+Create a custom registry (module `project42.registry`):
 
-* Transformers
+```python
+from coed.registry import Registry as CRegistry
 
-  * `shallowflow.api.transformer.AbstractSimpleTransformer`
-  * `shallowflow.api.transformer.AbstractListOutputTransformer` - can output items as list and one-by-one
-    
-* Sinks
+ENV_CLASSLISTERS = "PROJECT42_CLASSLISTERS"
 
-  * `shallowflow.api.sink.AbstractSimpleSink`
-  * `shallowflow.api.sink.AbstractFileWriter`
+class Registry(CRegistry):
+    """
+    Registry for managing plugins.
+    """
+
+    def __init__(self):
+        super().__init__(env_class_listers=ENV_CLASSLISTERS)
 
 
-## Methods
+REGISTRY = Registry()
+```
 
-* Serialization
+**Notes** 
+The environment variable is useful while developing, as the entrypoints
+are only available when installing the library.
 
-  * `shallowflow.api.serialization.add_dict_reader` - add a handler for class to interpret a dictionary
-  * `shallowflow.api.serialization.add_dict_writer` - add a handler for class to generate a dictionary
-  * `shallowflow.api.serialization.get_dict_reader` - returns the handler for a class to interpret a dictionary
-  * `shallowflow.api.serialization.get_dict_writer` - returns the handler for a class to generate a dictionary
+While developing in your IDE, you can set the `PROJECT42_CLASSLISTERS`
+environment variable to list all your class lister functions (comma-separated list),
+e.g.:
 
-* I/O
+```
+PROJECT42_CLASSLISTERS=project42.class_lister:list_classes
+```
 
-  * `shallowflow.api.io.add_flow_reader` - registers a handler for reading a new flow file format via the extension
-  * `shallowflow.api.io.add_flow_writer` - registers a handler for writing a new flow file format via the extension
-  * `shallowflow.api.io.load_actor` - loads an actor from a file, determines the reader based on the file extension
-  * `shallowflow.api.io.save_actor` - saves an actor to a file, determines the writer based on the file extension
+### Query classes
 
-  Currently supported formats:
- 
-  * `.yaml`
-  * `.json`
-  * `.pkl` - object serialization via pickle
-  
+With the registry in place, you can now obtain all the classes that have been 
+associated with a certain super class, e.g.:
+
+```python
+from project42.registry import REGISTRY
+
+classes = REGISTRY.classes("project42.superclass.One")
+for c in classes:
+    print(c)
+```
