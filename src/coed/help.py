@@ -1,7 +1,8 @@
+import abc
 from coed.config import AbstractOptionHandler
 
 
-class AbstractHelpGenerator(AbstractOptionHandler):
+class AbstractHelpGenerator(AbstractOptionHandler, abc.ABC):
     """
     Ancestor for classes that generate help from option handlers.
     """

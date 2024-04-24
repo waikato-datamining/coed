@@ -135,7 +135,7 @@ def expand(s: str, variables: 'Variables') -> str:
     return result
 
 
-class VariableChangeEvent(object):
+class VariableChangeEvent:
     """
     Event that gets sent out if variables change.
     """
@@ -196,7 +196,7 @@ class VariableNameStringReader(AbstractStringReader):
         return VariableName(s)
 
 
-class VariableChangeListener(object):
+class VariableChangeListener:
     """
     Interface for classes that listen to variable change events.
     """
@@ -211,7 +211,7 @@ class VariableChangeListener(object):
         raise NotImplementedError()
 
 
-class Variables(object):
+class Variables:
     """
     Manages the variables.
     """
@@ -388,7 +388,7 @@ class Variables(object):
         return str(self._data)
 
 
-class VariableHandler(object):
+class VariableHandler:
     """
     Interface for classes that manage variables.
     """

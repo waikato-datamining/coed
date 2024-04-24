@@ -1,3 +1,4 @@
+import abc
 import json
 from collections import OrderedDict
 from datetime import datetime
@@ -11,7 +12,7 @@ from coed.serialization.vars import AbstractStringReader, AbstractStringWriter
 import coed.serialization.vars as ser_vars
 
 
-class Option(object):
+class Option:
     """
     Defines a single option.
     """
@@ -466,7 +467,7 @@ class OptionManager(LoggableObject, VariableHandler):
         return result
 
 
-class AbstractOptionHandler(LoggableObject, VariableHandler):
+class AbstractOptionHandler(LoggableObject, VariableHandler, abc.ABC):
     """
     The ancestor for all classes that handle options.
     """
@@ -667,7 +668,7 @@ add_dict_reader(AbstractOptionHandler, dict_to_optionhandler)
 
 class OptionHandlerStringReader(AbstractStringReader):
     """
-    Ancestor for classes that turn strings into objects.
+    Instantiates option handlers from strings.
     """
 
     def handles(self, cls):
@@ -695,7 +696,7 @@ class OptionHandlerStringReader(AbstractStringReader):
 
 class OptionHandlerStringWriter(AbstractStringWriter):
     """
-    Ancestor for classes that turn objects into strings.
+    Turns option handlers into strings.
     """
 
     def handles(self, cls):

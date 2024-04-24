@@ -27,7 +27,7 @@ def handle_exception(msg: str, loggable: 'LoggableObject' = None) -> str:
     return result
 
 
-class LoggableObject(object):
+class LoggableObject:
     """
     Ancestor for objects that can output logging information.
     """

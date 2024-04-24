@@ -1,3 +1,4 @@
+import abc
 from typing import Any, Type, Optional, Dict, List
 import json
 
@@ -15,7 +16,7 @@ STRING_WRITERS_CACHE = None
 """ cache of class to AbstractStringWriter relation """
 
 
-class AbstractStringReader(object):
+class AbstractStringReader(abc.ABC):
     """
     Ancestor for classes that turn strings into objects.
     """
@@ -187,7 +188,7 @@ class ListStringReader(AbstractStringReader):
         return result
 
 
-class AbstractStringWriter(object):
+class AbstractStringWriter(abc.ABC):
     """
     Ancestor for classes that turn objects into strings.
     """
