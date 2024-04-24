@@ -178,7 +178,7 @@ class Registry:
             if att_name.startswith("Abstract"):
                 continue
             att = getattr(module, att_name)
-            if inspect.isclass(att) and not inspect.isabstract(att) and not isinstance(att, abc.ABCMeta) and issubclass(att, cls):
+            if inspect.isclass(att) and not inspect.isabstract(att) and issubclass(att, cls):
                 try:
                     obj = att()
                 except NotImplementedError:
