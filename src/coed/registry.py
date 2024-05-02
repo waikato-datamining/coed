@@ -3,25 +3,35 @@ import inspect
 import os
 import sys
 import traceback
-from typing import List, Union, Optional, Callable, Type
+from typing import Callable, Union, List, Optional, Type
 
 from pkg_resources import working_set
 
 from .class_utils import get_class_name, class_name_to_type
 
+DEFAULT = "DEFAULT"
+""" the placeholder for the default class listers in the environment variable. """
+
+LIST_CLASSES = "list_classes"
+""" the default method for listing classes. """
+
 
 def get_class_lister(class_lister: str) -> Callable:
     """
-    Parses the class_lister definition (module_name:function_name) and returns the function.
+    Parses the class_lister definition and returns the function.
+    The default format is "module_name:function_name".
+    If ":function_name" is omitted it is assumed to be ":list_classes".
 
     :param class_lister: the class lister definition to parse
     :type class_lister: str
     :return: the parsed function
     """
     if ":" not in class_lister:
-        raise Exception("Expected class lister format 'module_name:function_name', received: %s" % class_lister)
+        module_name = class_lister
+        func_name = LIST_CLASSES
+    else:
+        module_name, func_name = class_lister.split(":")
 
-    module_name, func_name = class_lister.split(":")
     try:
         module = importlib.import_module(module_name)
     except:
@@ -42,32 +52,45 @@ class Registry:
     Registry for managing class hierarchies.
     """
 
-    def __init__(self, class_listers: Union[str, List[str]] = None, env_class_listers: str = None,
+    def __init__(self, default_class_listers: Union[str, List[str]] = None, env_class_listers: str = None,
                  excluded_class_listers: Union[str, List[str]] = None, env_excluded_class_listers: str = None):
+        """
+        Initializes the registry.
+
+        :param default_class_listers: the default class lister(s) to use
+        :type default_class_listers: str or list
+        :param env_class_listers: the environment variable to retrieve the class lister(s) from
+        :type env_class_listers: str
+        :param excluded_class_listers: the class lister(s) to exclude from being used
+        :type excluded_class_listers: str or list
+        :param env_excluded_class_listers: the environmenr variable to retrieve the excluded class lister(s) from
+        :type env_excluded_class_listers: str
+        """
 
         self._classes = dict()
-        self._class_listers = None
+        self._default_class_listers = None
         self._env_class_listers = None
         self._excluded_class_listers = None
         self._env_excluded_class_listers = None
+        self._custom_class_listers = None
 
-        self.class_listers = class_listers
+        self.default_class_listers = default_class_listers
         self.env_class_listers = env_class_listers
         self.excluded_class_listers = excluded_class_listers
         self.env_excluded_class_listers = env_excluded_class_listers
 
     @property
-    def class_listers(self) -> Optional[List[str]]:
+    def default_class_listers(self) -> Optional[List[str]]:
         """
         Returns the class lister functions.
 
         :return: the functions
         :rtype: list
         """
-        return self._class_listers
+        return self._default_class_listers
 
-    @class_listers.setter
-    def class_listers(self, class_listers: Optional[Union[str, List[str]]]):
+    @default_class_listers.setter
+    def default_class_listers(self, class_listers: Optional[Union[str, List[str]]]):
         """
         Sets/unsets the class lister functions to use. Clears the class cache.
 
@@ -81,8 +104,8 @@ class Registry:
         elif isinstance(class_listers, list):
             class_listers = class_listers[:]
         else:
-            raise Exception("class_listers must be either str or list, but got: %s" % str(type(class_listers)))
-        self._class_listers = class_listers
+            raise Exception("default_class_listers must be either str or list, but got: %s" % str(type(class_listers)))
+        self._default_class_listers = class_listers
         self._classes = dict()
 
     @property
@@ -155,6 +178,98 @@ class Registry:
         """
         self._env_excluded_class_listers = excluded_class_listers
         self._classes = dict()
+
+    @property
+    def custom_class_listers(self) -> Optional[List[str]]:
+        """
+        Returns the custom class listers (if any).
+
+        :return: the class listers, None if none set
+        :rtype: list
+        """
+        return self._custom_class_listers
+
+    @custom_class_listers.setter
+    def custom_class_listers(self, class_listers: Optional[Union[str, List[str]]]):
+        """
+        Sets/unsets the custom class listers to use. Clears the plugin cache.
+
+        :param class_listers: the list of class listers to use, None to unset
+        :type class_listers: list
+        """
+        self._custom_class_listers = class_listers
+        self._classes = dict()
+
+    def has_env_class_listers(self) -> bool:
+        """
+        Checks whether an environment variable for class listers is set.
+
+        :return: True if set
+        :rtype: bool
+        """
+        return (self._env_class_listers is not None) \
+               and (len(self._env_class_listers) > 0) \
+               and (os.getenv(self._env_class_listers) is not None) \
+               and (len(os.getenv(self._env_class_listers)) > 0)
+
+    def has_env_excluded_class_listers(self) -> bool:
+        """
+        Checks whether an environment variable for excluded class listers is set.
+
+        :return: True if set
+        :rtype: bool
+        """
+        return (self._env_excluded_class_listers is not None) \
+               and (len(self._env_excluded_class_listers) > 0) \
+               and (os.getenv(self._env_excluded_class_listers) is not None) \
+               and (len(os.getenv(self._env_excluded_class_listers)) > 0)
+
+    def _expand_default_class_listers_placeholder(self, c: str) -> str:
+        """
+        Expands the DEFAULT class listers placeholder in the comma-separated class listers string.
+
+        :param c: the class listers string to expand
+        :type c: str
+        :return: the expanded class listers string
+        :rtype: str
+        """
+        if DEFAULT in c:
+            if len(self.default_class_listers) > 0:
+                c = c.replace(DEFAULT, ",".join(self.default_class_listers))
+            else:
+                c = c.replace(DEFAULT, "")
+        return c
+
+    def actual_fallback_class_listers(self) -> List[str]:
+        """
+        Returns list the of class listers to fall back on.
+        Precedence: custom_class_listers > env_class_listers > default_class_listers
+
+        :return: the list of class listers
+        :rtype: list
+        """
+        if (self._custom_class_listers is not None) and (len(self._custom_class_listers) > 0):
+            return self._custom_class_listers
+
+        if self.has_env_class_listers():
+            m = self._expand_default_class_listers_placeholder(os.getenv(self.env_class_listers))
+            return [x.strip() for x in m.split(",")]
+
+        return self.default_class_listers[:]
+
+    def actual_excluded_class_listers(self) -> List[str]:
+        """
+        Returns list the of excluded class listers.
+        Precedence: excluded_env_class_listers > excluded_class_listers
+
+        :return: the list of class listers
+        :rtype: list
+        """
+        if self.has_env_excluded_class_listers():
+            m = self._expand_default_class_listers_placeholder(os.getenv(self._env_excluded_class_listers))
+            return [x.strip() for x in m.split(",")]
+
+        return self.excluded_class_listers[:]
 
     def _determine_sub_classes(self, cls: Type, module_name: str) -> List[str]:
         """
@@ -288,11 +403,13 @@ class Registry:
         if entry_point_classes is not None:
             all_classes.update(entry_point_classes)
 
-        # from environment
-        if self.env_class_listers is not None:
-            env_classes = self._determine_from_env(c)
-            if env_classes is not None:
-                all_classes.update(env_classes)
+        # register from class listers as well?
+        if (len(all_classes) == 0) or ((self._custom_class_listers is not None) and (len(self._custom_class_listers) > 0)) or self.has_env_class_listers():
+            actual = self.actual_fallback_class_listers()
+            for excl in self.actual_excluded_class_listers():
+                if excl in actual:
+                    actual.remove(excl)
+            all_classes.update(self._determine_from_class_listers(c, actual))
 
         self._classes[c] = sorted(list(all_classes))
 
