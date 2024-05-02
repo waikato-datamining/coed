@@ -14,7 +14,7 @@ pip install "git+https://github.com/waikato-datamining/coed.git"
 Approach:
 
 1. define a class lister function
-2. reference this function in `setup.py`
+2. reference the class lister function in `setup.py`
 3. create a custom registry
 4. query classes
 
@@ -63,13 +63,15 @@ The format for referencing the class lister function is as follows:
     ...
 ```
 
+If the `function_name` is `list_classes`, it can be omitted.
+
 The above example class lister function would be referenced like this:
 
 ```
     ...
     entry_points={
         "class_lister": [
-            "project42=project42.class_lister:list_classes",
+            "project42=project42.class_lister",
         ],
     },
     ...
