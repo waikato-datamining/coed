@@ -1,5 +1,8 @@
+import threading
 from typing import Tuple, Any, Set
 from coed.serialization.vars import AbstractStringReader, add_string_reader
+
+variables_mutex = threading.Semaphore(1)
 
 
 VARIABLE_EVENT_ADDED = "added"
@@ -265,7 +268,9 @@ class Variables:
         :return: itself
         :rtype: Variables
         """
+        variables_mutex.acquire()
         self._data.clear()
+        variables_mutex.release()
         self._notify_listeners(VariableChangeEvent(self, VARIABLE_EVENT_CLEARED))
         return self
 
@@ -280,7 +285,10 @@ class Variables:
         """
         if not is_valid_name(key):
             raise Exception("Invalid variable name: %s" + key)
-        return key in self._data
+        variables_mutex.acquire()
+        result = key in self._data
+        variables_mutex.release()
+        return result
 
     def set(self, key: str, value: Any) -> 'Variables':
         """
@@ -295,12 +303,15 @@ class Variables:
         """
         if not is_valid_name(key):
             raise Exception("Invalid variable name: %s" + key)
+        variables_mutex.acquire()
         if key not in self._data:
             self._data[key] = value
-            self._notify_listeners(VariableChangeEvent(self, VARIABLE_EVENT_ADDED, key))
+            event = VARIABLE_EVENT_ADDED
         else:
             self._data[key] = value
-            self._notify_listeners(VariableChangeEvent(self, VARIABLE_EVENT_UPDATED, key))
+            event = VARIABLE_EVENT_UPDATED
+        variables_mutex.release()
+        self._notify_listeners(VariableChangeEvent(self, event, key))
         return self
 
     def get(self, key: str) -> Any:
@@ -314,10 +325,12 @@ class Variables:
         """
         if not is_valid_name(key):
             raise Exception("Invalid variable name: %s" + key)
+        result = None
+        variables_mutex.acquire()
         if key in self._data:
-            return self._data[key]
-        else:
-            return None
+            result = self._data[key]
+        variables_mutex.release()
+        return result
 
     def remove(self, key: str) -> 'Variables':
         """
@@ -330,9 +343,14 @@ class Variables:
         """
         if not is_valid_name(key):
             raise Exception("Invalid variable name: %s" + key)
+        variables_mutex.acquire()
+        event = None
         if key in self._data:
             del self._data[key]
-            self._notify_listeners(VariableChangeEvent(self, VARIABLE_EVENT_DELETED, key))
+            event = VARIABLE_EVENT_DELETED
+        variables_mutex.release()
+        if event is not None:
+            self._notify_listeners(VariableChangeEvent(self, event, key))
         return self
 
     def keys(self) -> Set:
@@ -342,7 +360,10 @@ class Variables:
         :return: the set of names
         :rtype: set
         """
-        return set(self._data.keys())
+        variables_mutex.acquire()
+        result = set(self._data.keys())
+        variables_mutex.release()
+        return result
 
     def expand(self, s: str) -> str:
         """
@@ -364,8 +385,10 @@ class Variables:
         :return: itself
         :rtype: Variables
         """
+        variables_mutex.acquire()
         for key in variables.keys():
             self.set(key, variables.get(key))
+        variables_mutex.release()
         return self
 
     def _notify_listeners(self, event: VariableChangeEvent):
